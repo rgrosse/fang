@@ -52,8 +52,19 @@ def ais(path, schedule, show_progress=False):
 
 
 
+class GeometricRBMPath:
+    """Geometric averages sequence with a linear schedule."""
+    
+    def __init__(self, init_rbm, target_rbm):
+        self.init_rbm = init_rbm
+        self.target_rbm = target_rbm
 
-class RBMPath:
+    def get_rbm(self, t):
+        return self.init_rbm * (1. - t) + self.target_rbm * t
+
+
+
+class RBMDistributionSequence:
     def __init__(self, sequence, num_samples, energy_of):
         self.sequence = sequence
         self.num_samples = num_samples

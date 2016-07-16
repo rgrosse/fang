@@ -155,8 +155,8 @@ def run_ais(expt, save=True, show_progress=False):
             brm = moments.full_base_rate_moments()
             init_rbm = binary_rbms.RBM.from_moments(brm)
 
-            seq = annealing.GeometricRBMSequence(init_rbm, rbm)
-            path = ais.RBMPath(seq, expt.annealing.num_particles, 'h')
+            seq = annealing.GeometricRBMPath(init_rbm, rbm)
+            path = ais.RBMDistributionSequence(seq, expt.annealing.num_particles, 'h')
             schedule = np.linspace(0., 1., expt.annealing.num_steps)
             state, log_Z, _ = ais.ais(path, schedule, show_progress=show_progress)
 

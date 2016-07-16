@@ -16,11 +16,29 @@ import binary_rbms
 import config
 import datasets
 import diagnostics
-import moments as expt_moments
 import rbm_training
+import scipy.io
 from utils.schemas import Params, List, Choice
 from utils import misc, storage
 from visuals import rbm_vis
+
+
+class TrainedRBM(Params):
+    """Parameters for a previously trained RBM"""
+    class Fields:
+        location = str     # filename
+
+def load_trained_rbm(fname):
+    """Load a previously trained RBM"""
+    if fname[-2:] == 'pk':
+        return storage.load(fname)
+    elif fname[-3:] == 'mat':
+        vars = scipy.io.loadmat(fname)
+        return binary_rbms.RBM(gnp.garray(vars['visbiases'].ravel()),
+                               gnp.garray(vars['hidbiases'].ravel()),
+                               gnp.garray(vars['vishid']))
+    else:
+        raise RuntimeError('Unknown format: {}'.format(fname))
 
 
 
@@ -36,7 +54,7 @@ class Expt(Params):
         #   - 'base_rates': initialize biases to log-odds of base rate moments, weights
         #        to zero (no need to break symmetries since training is convex)
         #   - TrainedRBM: previously trained RBM
-        init_rbm = Choice(['base_rates', expt_moments.TrainedRBM])
+        init_rbm = Choice(['base_rates', TrainedRBM])
         
         save_after = List(int)                 # save visualizations after each of these iterations
         show_after = List(int)                 # display visualizations after each of these iterations
@@ -154,7 +172,25 @@ def omniglot_learning_rates(algorithm):
 
 
 def get_experiment(name):
-    m = re.match(r'mnist_long2/(\w*)$', name)
+    m = re.match(r'mnist_quick/(\w*)$', name)
+    if m:
+        algorithm = m.group(1)
+        bias_lrate, weights_lrate = mnist_learning_rates(algorithm)
+        bias_lrate /= 3.
+        weights_lrate /= 3.
+        params = default_parameters(name)
+        set_updater(params, algorithm, bias_lrate, weights_lrate)
+        params['permute'] = True          # should have been doing this before!
+        params['training'].neg.num_particles = 400
+        params['training'].pos.mbsize = 400
+        params['training'].weight_decay = 0.
+        params['training'].num_steps = 50000
+        params['save_after'] = [100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000,
+                                200000, 500000, 1000000, 2000000]
+        params['save_particles'] = False
+        return Expt(**params)
+    
+    m = re.match(r'mnist_full/(\w*)$', name)
     if m:
         algorithm = m.group(1)
         bias_lrate, weights_lrate = mnist_learning_rates(algorithm)
@@ -170,7 +206,7 @@ def get_experiment(name):
         params['save_particles'] = False
         return Expt(**params)
 
-    m = re.match(r'omniglot_long_500/(\w*)$', name)
+    m = re.match(r'omniglot_full/(\w*)$', name)
     if m:
         algorithm = m.group(1)
         bias_lrate, weights_lrate = omniglot_learning_rates(algorithm)
@@ -208,6 +244,9 @@ class Visuals:
         display = it in self.expt.show_after
 
         if save:
+            assert display
+
+        if save:
             if self.expt.save_particles:
                 storage.dump(trainer.fantasy_particles, self.expt.pcd_particles_file(it))
             storage.dump(rbm, self.expt.rbm_file(it))
@@ -219,7 +258,7 @@ class Visuals:
             fig = rbm_vis.show_particles(rbm, trainer.fantasy_particles, self.expt.dataset, display=display,
                                          figtitle='PCD particles ({} updates)'.format(it))
             if display:
-                pylab.draw()
+                pylab.gcf().canvas.draw()
             if save:
                 misc.save_image(fig, self.expt.pcd_particles_figure_file(it))
 
@@ -233,10 +272,10 @@ class Visuals:
             self.log_prob_tracker.update(rbm, trainer.fantasy_particles)
 
         if display:
-            pylab.draw()
+            pylab.gcf().canvas.draw()
 
 
-def run(expt, visuals=None):
+def run(expt, display=False):
     if isinstance(expt, str):
         expt = get_experiment(expt)
 
@@ -252,13 +291,16 @@ def run(expt, visuals=None):
         idxs = np.random.permutation(v.shape[0])
         v = v[idxs]
 
-    if visuals is None:
-        visuals = Visuals(expt, v)
+    if display:
+        expt.diagnostics += ['objective']
+        expt.show_after = expt.save_after
+    visuals = Visuals(expt, v)
+
 
     if expt.init_rbm == 'base_rates':
         init_rbm = None
-    elif isinstance(expt.init_rbm, expt_moments.TrainedRBM):
-        init_rbm = expt_moments.load_trained_rbm(expt.init_rbm.location).convert_to_garrays()
+    elif isinstance(expt.init_rbm, TrainedRBM):
+        init_rbm = load_trained_rbm(expt.init_rbm.location).convert_to_garrays()
     else:
         raise RuntimeError('Unknown init_rbm')
 

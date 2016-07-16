@@ -1,11 +1,7 @@
-import gnumpy as gnp
 import math
 import numpy as np
-#nax = np.newaxis
-import scipy.linalg
 
 import ais
-import annealing
 import binary_rbms
 import centering
 import fang
@@ -216,8 +212,8 @@ class Trainer:
         elif isinstance(self.params.neg, AISParams):
             brm = self.moments.full_base_rate_moments()
             init_rbm = binary_rbms.RBM.from_moments(brm)
-            seq = annealing.GeometricRBMSequence(init_rbm, self.rbm)
-            path = ais.RBMPath(seq, self.params.neg.num_particles, 'h')
+            seq = ais.GeometricRBMPath(init_rbm, self.rbm)
+            path = ais.RBMDistributionSequence(seq, self.params.neg.num_particles, 'h')
             schedule = np.linspace(0., 1., self.params.neg.num_steps)
             state, _, _ = ais.ais(path, schedule, show_progress=True)
             self.ais_state = state
