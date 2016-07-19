@@ -7,11 +7,9 @@ import sys
 import time
 
 import ais
-import annealing
 import binary_rbms
 import config
 import from_scratch as expt_fs
-import moment_matching as expt_mm
 import tractable
 from utils.schemas import Params, Struct, Choice
 from utils import misc, storage
@@ -35,7 +33,7 @@ class Expt(Params):
     class Fields:
         name = str
         dataset = str                            # dataset on which to measure log probs
-        rbm_source = Choice([MomentMatchedRBM, FromScratchRBM])            # which RBMs to evaluate
+        rbm_source = Choice([FromScratchRBM])            # which RBMs to evaluate
         annealing = Choice([ais.AnnealingParams, ExactParams])     # method of computing/estimating partition function
         include_test = bool                      # whether to report results on test data
         gibbs_steps = int                        # number of Gibbs steps to run starting from AIS particles
@@ -84,17 +82,6 @@ class Expt(Params):
 
 
 def get_experiment(name):
-    m = re.match(r'exact/(.*)$', name)       # exactly evaluate a small RBM
-    if m:
-        mm_expt = m.group(1)
-        return Expt(
-            name = name,
-            dataset = expt_mm.get_experiment(mm_expt).dataset,
-            rbm_source = MomentMatchedRBM(expt_name=mm_expt),
-            annealing = ExactParams(num_samples=400),
-            include_test = False,
-            gibbs_steps = 50000)
-
     m = re.match(r'from_scratch/(.*)$', name)      # approximately evaluate moment matched RBM with AIS
     if m:
         fs_expt = m.group(1)
@@ -109,7 +96,7 @@ def get_experiment(name):
     raise RuntimeError('Unknown experiment: {}'.format(name))
 
 def get_training_expt(expt):
-    elif isinstance(expt.rbm_source, FromScratchRBM):
+    if isinstance(expt.rbm_source, FromScratchRBM):
         return expt_fs.get_experiment(expt.rbm_source.expt_name)
     else:
         raise RuntimeError('Unknown RBM source: {}'.format(expt.rbm_source))
@@ -126,11 +113,11 @@ def load_rbm(expt, it, avg):
     return rbm.convert_to_garrays()            # for RBMs saved by the CPU version of the code
 
 def compute_moments(tr_expt, rbm):
-    if isinstance(tr_expt, expt_mm.Expt):
-        return expt_mm.load_moments(tr_expt)
-    elif isinstance(tr_expt, expt_fs.Expt):
+    if isinstance(tr_expt, expt_fs.Expt):
         v = gnp.garray(tr_expt.dataset.load().as_matrix())
         return rbm.cond_vis(v).smooth()
+    else:
+        raise RuntimeError('Invalid tr_expt')
         
 
 def run_ais(expt, save=True, show_progress=False):
@@ -155,7 +142,7 @@ def run_ais(expt, save=True, show_progress=False):
             brm = moments.full_base_rate_moments()
             init_rbm = binary_rbms.RBM.from_moments(brm)
 
-            seq = annealing.GeometricRBMPath(init_rbm, rbm)
+            seq = ais.GeometricRBMPath(init_rbm, rbm)
             path = ais.RBMDistributionSequence(seq, expt.annealing.num_particles, 'h')
             schedule = np.linspace(0., 1., expt.annealing.num_steps)
             state, log_Z, _ = ais.ais(path, schedule, show_progress=show_progress)
@@ -309,10 +296,6 @@ def collect_log_probs(expt, use_test=False, ignore_failed=False):
     vis = np.random.binomial(1, vis)
 
     tr_expt = get_training_expt(expt)
-    try:
-        moments = expt_mm.load_moments(tr_expt)
-    except:
-        pass
     results = {}
     pbar = misc.pbar(len(tr_expt.save_after) * 2)
     count = 0
@@ -333,21 +316,13 @@ def collect_log_probs(expt, use_test=False, ignore_failed=False):
                 log_Z_lower, log_Z_upper = misc.bootstrap(log_Z, log_mean)
 
                 train_fev = rbm.free_energy_vis(vis)
-                try:
-                    moments_dot = rbm.dot_product(moments)
-                except:
-                    moments_dot = None
 
-                results[it, avg] = Results(log_Z, log_Z_lower, log_Z_upper, train_fev, moments_dot)
+                results[it, avg] = Results(log_Z, log_Z_lower, log_Z_upper, train_fev, None)
 
             elif isinstance(expt.annealing, ExactParams):
                 log_Z = storage.load(expt.log_Z_file(it, avg))
                 train_fev = rbm.free_energy_vis(vis)
-                try:
-                    moments_dot = rbm.dot_product(moments)
-                except:
-                    moments_dot = None
-                results[it, avg] = ExactResults(log_Z, train_fev, moments_dot)
+                results[it, avg] = ExactResults(log_Z, train_fev, None)
 
             else:
                 raise RuntimeError('Unknown annealing params')
