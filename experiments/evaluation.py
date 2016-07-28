@@ -16,6 +16,9 @@ from utils import misc, storage
 from visuals import rbm_vis
 
 
+AVG_VALS = [True]              # True = Polyak averaged RBM, False = raw RBM
+
+
 class FromScratchRBM(Params):
     class Fields:
         expt_name = str          # name of experiment in from_scratch.py with RBMs to evaluate
@@ -130,7 +133,7 @@ def run_ais(expt, save=True, show_progress=False):
     tr_expt = get_training_expt(expt)
 
     for it in tr_expt.save_after:
-        for avg in [False, True]:
+        for avg in AVG_VALS:
             print 'iteration', it, avg
             t0 = time.time()
             try:
@@ -159,7 +162,7 @@ def save_exact_log_Z(expt):
     tr_expt = get_training_expt(expt)
         
     for it in tr_expt.save_after:
-        for avg in [False, True]:
+        for avg in AVG_VALS:
             print 'iteration', it, avg
             try:
                 rbm = load_rbm(expt, it, avg)
@@ -191,7 +194,7 @@ def run_gibbs(expt, save=True, show_progress=False):
     tr_expt = get_training_expt(expt)
 
     for it in tr_expt.save_after:
-        for avg in [False, True]:
+        for avg in AVG_VALS:
             print 'Iteration', it, avg
             try:
                 rbm = load_rbm(expt, it, avg)
@@ -228,7 +231,7 @@ def save_exact_samples(expt):
     tr_expt = get_training_expt(expt)
 
     for it in tr_expt.save_after:
-        for avg in [False, True]:
+        for avg in AVG_VALS:
             print 'Iteration', it, avg
             try:
                 rbm = load_rbm(expt, it, avg)
@@ -300,7 +303,7 @@ def collect_log_probs(expt, use_test=False, ignore_failed=False):
     pbar = misc.pbar(len(tr_expt.save_after) * 2)
     count = 0
     for it in tr_expt.save_after:
-        for avg in [False, True]:
+        for avg in AVG_VALS:
             count += 1
             #print 'iteration', it
             try:
@@ -372,7 +375,7 @@ def save_figures(expt):
     storage.ensure_directory(expt.figures_dir())
 
     for it in tr_expt.save_after:
-        for avg in [False, True]:
+        for avg in AVG_VALS:
             print 'Iteration', it
             try:
                 rbm = load_rbm(expt, it, avg)

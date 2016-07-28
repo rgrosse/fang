@@ -1,0 +1,16 @@
+
+
+
+
+To train the RBM:
+
+   python experiments/from_scratch.py mnist_full/sgd
+
+To evaluate the RBM:
+
+   python experiments/evaluation.py from_scratch/mnist_full/sgd all
+
+
+
+
+

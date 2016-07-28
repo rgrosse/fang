@@ -244,9 +244,6 @@ class Visuals:
         display = it in self.expt.show_after
 
         if save:
-            assert display
-
-        if save:
             if self.expt.save_particles:
                 storage.dump(trainer.fantasy_particles, self.expt.pcd_particles_file(it))
             storage.dump(rbm, self.expt.rbm_file(it))
