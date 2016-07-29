@@ -1,10 +1,10 @@
 
-This repository gives the code for reproducing the experiments in Grosse and Salakhutdinov, 2015, "Scaling up natural gradient by sparsely factorizing the inverse Fisher matrix". The code is not optimized for low-level efficiency issues.
+This repository gives the code for reproducing the experiments in [Grosse and Salakhutdinov, 2015, "Scaling up natural gradient by sparsely factorizing the inverse Fisher matrix"](http://www.cs.toronto.edu/~rgrosse/icml2015-fang.pdf). The code is not optimized for low-level efficiency issues.
 
 Setup:
 
 1. Clone this repository
-2. Install [CudaMat](https://github.com/cudamat/cudamat) and [GNumpy](http://www.cs.toronto.edu/~tijmen/gnumpy.html)
+2. Install [CUDAMat](https://github.com/cudamat/cudamat) and [GNumpy](http://www.cs.toronto.edu/~tijmen/gnumpy.html)
 3. Create `config.py` based on `config_example.py`, and fill in the required directories.
 
 The following experiments use as an example training an RBM on MNIST using SGD. 
