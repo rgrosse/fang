@@ -1,14 +1,23 @@
 
-
-
+This repository gives the code for reproducing the experiments in Grosse and Salakhutdinov, 2015, "Scaling up natural gradient by sparsely factorizing the inverse Fisher matrix". The code is not optimized for low-level efficiency issues. 
 
 To train the RBM:
 
    python experiments/from_scratch.py mnist_full/sgd
 
-To evaluate the RBM:
+To estimate the RBM partition function and save approximate samples (by running AIS followed by a lot of Gibbs steps):
 
    python experiments/evaluation.py from_scratch/mnist_full/sgd all
+
+To plot the log-likelihoods as a function of time:
+
+   from experiments import plotting
+   plotting.show_comparison('mnist_full', ['sgd'], 'test')
+
+To plot the approximate samples and save them to <config.FIGURES_DIR>/evaluation/from_scratch/:
+
+   from experiments import evaluation
+   evaluation.save_figures('from_scratch/mnist_full/sgd')
 
 
 

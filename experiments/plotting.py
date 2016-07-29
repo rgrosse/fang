@@ -10,8 +10,11 @@ from utils import storage
 
 COLORS = ['b', 'g', 'r', 'c', 'k', 'm', 'y']
 LINE_STYLES = ['-', '--', ':']
+ALGORITHM_LABELS = {'sgd': 'SGD', 'centering': 'centering', 'fang': 'FANG'}
 
-def load_wall_clock_time(expt_name, prefix='mm_rbms'):
+PREFIX = 'from_scratch'
+
+def load_wall_clock_time(expt_name):
     eval_expt = evaluation.get_experiment(expt_name)
     tr_expt = from_scratch.get_experiment(eval_expt.rbm_source.expt_name)
     return [storage.load(tr_expt.time_file(it)) for it in tr_expt.save_after
@@ -23,7 +26,7 @@ class Plotter:
         self.average = average
         self.labels = set()
 
-    def plot_results(self, results, xloc, color, ls, label, presentation=False, subsample=False):
+    def plot_results(self, results, xloc, color, ls, label):
         iter_counts = sorted(set([it for it, av in results.keys() if av == self.average]))
         sorted_results = [results[it, self.average] for it in iter_counts]
 
@@ -39,16 +42,7 @@ class Plotter:
 
         xloc = xloc[:len(avg)]
 
-        if presentation:
-            lw = 2.
-        else:
-            lw = 1.
-
-        if subsample:
-            xloc = xloc[1::4]
-            avg = avg[1::4]
-            lower = lower[1::4]
-            upper = upper[1::4]
+        lw = 2.
 
         if label not in self.labels:
             plot_cmd(xloc, avg, color=color, ls=ls, lw=lw, label=label)
@@ -57,9 +51,8 @@ class Plotter:
 
         self.labels.add(label)
 
-        if presentation:
-            pylab.xticks(fontsize='xx-large')
-            pylab.yticks(fontsize='xx-large')
+        pylab.xticks(fontsize='xx-large')
+        pylab.yticks(fontsize='xx-large')
 
         try:
             pylab.errorbar(xloc, (lower+upper)/2., yerr=(upper-lower)/2., fmt='', ls='None', ecolor=color)
@@ -67,51 +60,18 @@ class Plotter:
             pass
 
 
-def plot_log_probs(expt_names, prefix='mm_rbms', average=True, figtitle='Log prob comparison', logscale=True, use_test=False,
-                   use_wall_clock=False, presentation=False):
-    #pylab.figure(figtitle)
-    pylab.figure()
-    pylab.clf()
-
-    plotter = Plotter(logscale, average)
-
-    for name, color in zip(expt_names, COLORS):
-        results_dir = os.path.join(config.OUTPUTS_DIR, 'evaluation', prefix, name)
-        subdirs = os.listdir(results_dir)
-        for subdir, ls in zip(subdirs, LINE_STYLES):
-            full_expt_name = '{}/{}/{}'.format(prefix, name, subdir)
-            print full_expt_name, ls
-            expt = evaluation.get_experiment(full_expt_name)
-            results = evaluation.collect_log_probs(expt, use_test=use_test, ignore_failed=True)
-            iter_counts = sorted(set([k[0] for k in results.keys()]))
-
-            if use_wall_clock:
-                xloc = load_wall_clock_time(full_expt_name)
-            else:
-                xloc = iter_counts
-
-            plotter.plot_results(results, xloc, color, ls, name, presentation=presentation)
-
-            
-    if presentation:
-        pylab.legend(loc='lower right', fontsize='x-large')
-    else:
-        pylab.legend(loc='lower right')
-        pylab.title(figtitle)
-
-
-def collect_names(name, prefix='mm_rbms'):
-    d = os.path.join(config.OUTPUTS_DIR, 'evaluation', prefix, name)
+def collect_names(name):
+    d = os.path.join(config.OUTPUTS_DIR, 'evaluation', PREFIX, name)
     conditions = os.listdir(d)
     return [os.path.join(name, c) for c in sorted(conditions)]
 
 
-def plot_log_probs2(expt_names, prefix='mm_rbms', average=True, figtitle='Log prob comparison', logscale=True, use_test=False,
-                    use_wall_clock=False, presentation=False, labels='auto', colors=COLORS, minutes=False,
-                    hours=False, subsample=False, show_legend=True):
-    #pylab.figure(figtitle)
+def plot_log_probs(expt_names, average=True, logscale=True, subset='test',
+                   use_wall_clock=True, labels='auto', colors=COLORS, time_unit='seconds'):
     pylab.figure()
     pylab.clf()
+    assert time_unit in ['seconds', 'minutes', 'hours']
+    assert subset in ['train', 'test']
 
     plotter = Plotter(logscale, average)
 
@@ -119,29 +79,45 @@ def plot_log_probs2(expt_names, prefix='mm_rbms', average=True, figtitle='Log pr
         labels = expt_names
     
     for name, (style, color), label in zip(expt_names, itertools.product(LINE_STYLES, colors), labels):
-        results_dir = os.path.join(config.OUTPUTS_DIR, 'evaluation', prefix, name)
-        full_expt_name = '{}/{}'.format(prefix, name)
+        full_expt_name = '{}/{}'.format(PREFIX, name)
         print full_expt_name
         expt = evaluation.get_experiment(full_expt_name)
-        results = evaluation.collect_log_probs(expt, use_test=use_test, ignore_failed=True)
+        results = evaluation.collect_log_probs(expt, subset=subset, ignore_failed=True)
         iter_counts = sorted(set([k[0] for k in results.keys()]))
 
         if use_wall_clock:
-            xloc = np.array(load_wall_clock_time(full_expt_name, prefix))
-            if hours:
+            xloc = np.array(load_wall_clock_time(full_expt_name))
+            if time_unit == 'hours':
                 xloc /= 3600.
-            elif minutes:
+            elif time_unit == 'minutes':
                 xloc /= 60.
         else:
             xloc = np.array(iter_counts)
 
-        plotter.plot_results(results, xloc, color, style, label, presentation=presentation,
-                             subsample=subsample)
+        plotter.plot_results(results, xloc, color, style, label)
 
-    #assert False
-    if show_legend:
-        if presentation:
-            pylab.legend(loc='lower right', fontsize='xx-large')
-        else:
-            pylab.legend(loc='lower right')
-            pylab.title(figtitle)    
+    pylab.legend(loc='lower right', fontsize='xx-large')
+
+def get_ylim(expt_base):
+    if 'mnist' in expt_base:
+        return -100., -80.
+    elif 'omniglot' in expt_base:
+        return -120., -95.
+    else:
+        raise RuntimeError('Unable to determine y-axis scaling')
+
+def show_comparison(expt_base, algorithms, subset, ymin=None, ymax=None):
+    expt_names = ['/'.join([expt_base, alg]) for alg in algorithms]
+    labels = [ALGORITHM_LABELS[alg] for alg in algorithms]
+    plot_log_probs(expt_names, subset=subset, labels=labels)
+    pylab.xlim(1e1, 1e5)
+    if ymin is None:
+        ymin, ymax = get_ylim(expt_base)
+    pylab.ylim(ymin, ymax)
+    pylab.xlabel('Wall clock time (seconds)', fontsize='x-large')
+    pylab.ylabel('{} log-probabilities'.format({'train': 'Training', 'test': 'Test'}[subset]),
+                 fontsize='x-large')
+    pylab.tight_layout()
+    
+
+                

@@ -286,13 +286,14 @@ class ExactResults(Struct):
         return self.moments_dot - self.log_Z
     
 
-def collect_log_probs(expt, use_test=False, ignore_failed=False):
+def collect_log_probs(expt, subset='test', ignore_failed=False):
     """Load the results of individual partition function estimation trials, and return
     the averaged estimates along with bootstrap confidence intervals."""
     if isinstance(expt, str):
         expt = get_experiment(expt)
+    assert subset in ['train', 'test']
 
-    if use_test:
+    if subset == 'test':
         vis = expt.dataset.load_test().as_matrix()
     else:
         vis = expt.dataset.load().as_matrix()
