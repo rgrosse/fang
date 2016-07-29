@@ -180,7 +180,7 @@ def get_experiment(name):
         weights_lrate /= 3.
         params = default_parameters(name)
         set_updater(params, algorithm, bias_lrate, weights_lrate)
-        params['permute'] = True          # should have been doing this before!
+        params['permute'] = True
         params['training'].neg.num_particles = 400
         params['training'].pos.mbsize = 400
         params['training'].weight_decay = 0.
@@ -196,7 +196,7 @@ def get_experiment(name):
         bias_lrate, weights_lrate = mnist_learning_rates(algorithm)
         params = default_parameters(name)
         set_updater(params, algorithm, bias_lrate, weights_lrate)
-        params['permute'] = True          # should have been doing this before!
+        params['permute'] = True
         params['training'].neg.num_particles = 2000
         params['training'].pos.mbsize = 2000
         params['training'].weight_decay = 0.
@@ -213,7 +213,7 @@ def get_experiment(name):
         params = default_parameters(name)
         set_updater(params, algorithm, bias_lrate, weights_lrate)
         params['dataset'] = datasets.CharactersInfo()
-        params['permute'] = True          # should have been doing this before!
+        params['permute'] = True
         params['nhid'] = 500
         params['training'].neg.num_particles = 2000
         params['training'].pos.mbsize = 2000
