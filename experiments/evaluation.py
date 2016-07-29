@@ -24,6 +24,15 @@ class FromScratchRBM(Params):
         expt_name = str          # name of experiment in from_scratch.py with RBMs to evaluate
 
 
+class AnnealingParams(Params):
+    """Parameters for estimating log probs with AIS"""
+    class Fields:
+        num_particles = int      # number of AIS runs
+        num_steps = int          # number of AIS steps
+
+    class Defaults:
+        quick = {'num_particles': 100, 'num_steps': 10000}
+        full = {'num_particles': 400, 'num_steps': 50000}
 
 
 class ExactParams(Params):
@@ -37,7 +46,7 @@ class Expt(Params):
         name = str
         dataset = str                            # dataset on which to measure log probs
         rbm_source = Choice([FromScratchRBM])            # which RBMs to evaluate
-        annealing = Choice([ais.AnnealingParams, ExactParams])     # method of computing/estimating partition function
+        annealing = Choice([AnnealingParams, ExactParams])     # method of computing/estimating partition function
         include_test = bool                      # whether to report results on test data
         gibbs_steps = int                        # number of Gibbs steps to run starting from AIS particles
 
@@ -92,7 +101,7 @@ def get_experiment(name):
             name = name,
             dataset = expt_fs.get_experiment(fs_expt).dataset,
             rbm_source = FromScratchRBM(expt_name=fs_expt),
-            annealing = ais.AnnealingParams.defaults('full'),
+            annealing = AnnealingParams.defaults('full'),
             include_test = False,
             gibbs_steps = 50000)
 
@@ -145,10 +154,10 @@ def run_ais(expt, save=True, show_progress=False):
             brm = moments.full_base_rate_moments()
             init_rbm = binary_rbms.RBM.from_moments(brm)
 
-            seq = ais.GeometricRBMPath(init_rbm, rbm)
-            path = ais.RBMDistributionSequence(seq, expt.annealing.num_particles, 'h')
+            path = ais.GeometricRBMPath(init_rbm, rbm)
             schedule = np.linspace(0., 1., expt.annealing.num_steps)
-            state, log_Z, _ = ais.ais(path, schedule, show_progress=show_progress)
+            state, log_Z, _ = ais.ais(path, schedule, expt.annealing.num_particles,
+                                      show_progress=show_progress)
 
             if save:
                 storage.dump(log_Z, expt.log_Z_file(it, avg))
@@ -180,7 +189,7 @@ def save_log_Z(expt, save=True, show_progress=False):
         
     if isinstance(expt.annealing, ExactParams):
         save_exact_log_Z(expt)
-    elif isinstance(expt.annealing, ais.AnnealingParams):
+    elif isinstance(expt.annealing, AnnealingParams):
         run_ais(expt, save, show_progress)
     else:
         raise RuntimeError('Unknown annealing parameter')
@@ -249,7 +258,7 @@ def save_samples(expt, save=True, show_progress=False):
         
     if isinstance(expt.annealing, ExactParams):
         save_exact_samples(expt)
-    elif isinstance(expt.annealing, ais.AnnealingParams):
+    elif isinstance(expt.annealing, AnnealingParams):
         run_gibbs(expt, save, show_progress)
     else:
         raise RuntimeError('Unknown annealing parameter')
@@ -315,7 +324,7 @@ def collect_log_probs(expt, subset='test', ignore_failed=False):
             if ignore_failed and not os.path.exists(expt.log_Z_file(it, avg)):
                 continue
 
-            if isinstance(expt.annealing, ais.AnnealingParams):
+            if isinstance(expt.annealing, AnnealingParams):
                 log_Z = storage.load(expt.log_Z_file(it, avg)).as_numpy_array()
                 log_Z_lower, log_Z_upper = misc.bootstrap(log_Z, log_mean)
 

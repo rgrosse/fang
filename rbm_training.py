@@ -50,12 +50,6 @@ class PCDParams(Params):
         num_particles = int                       # number of PCD particles
         condition_on = Choice(['vis', 'hid'])     # whether to condition on visibles or hiddens (should use 'hid')
 
-class AISParams(Params):
-    """Compute negative statistics using AIS (experimental)"""
-    class Fields:
-        num_steps = int                           # number of AIS steps
-        num_particles = int                       # number of AIS particles
-
 class ExactNegParams(Params):
     """Compute exact model statistics for negative statistics."""
     class Fields:
@@ -161,8 +155,6 @@ class Trainer:
                 self.fantasy_particles = self.rbm.step(self.fantasy_particles)
         if isinstance(self.params.neg, ExactNegParams) and self.params.neg.num_samples > 0:
             self.fantasy_particles = tractable.exact_samples(self.rbm, self.params.neg.num_samples)
-        if isinstance(self.params.neg, AISParams) and hasattr(self, 'ais_state'):
-            self.fantasy_particles = self.ais_state
 
     def pos_moments(self):
         """Compute the positive statistics."""
@@ -209,15 +201,6 @@ class Trainer:
                 return self.rbm.cond_vis(particles.v)
         elif isinstance(self.params.neg, ExactNegParams):
             return tractable.exact_moments(self.rbm)
-        elif isinstance(self.params.neg, AISParams):
-            brm = self.moments.full_base_rate_moments()
-            init_rbm = binary_rbms.RBM.from_moments(brm)
-            seq = ais.GeometricRBMPath(init_rbm, self.rbm)
-            path = ais.RBMDistributionSequence(seq, self.params.neg.num_particles, 'h')
-            schedule = np.linspace(0., 1., self.params.neg.num_steps)
-            state, _, _ = ais.ais(path, schedule, show_progress=True)
-            self.ais_state = state
-            return self.rbm.cond_hid(state.h)
         else:
             raise RuntimeError('Unknown negative update: %s' % self.neg_type)
 

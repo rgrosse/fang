@@ -3,7 +3,14 @@ This repository gives the code for reproducing the experiments in Grosse and Sal
 
 To train the RBM:
 
-   python experiments/from_scratch.py mnist_full/sgd
+   from the command line:
+
+        python experiments/from_scratch.py mnist_full/sgd
+
+   Alternatively, in interactive mode, with visualizations and likelihood evaluations as training progresses:
+
+        from experiments import from_scratch
+        from_scratch.run('mnist_full/sgd', True)
 
 To estimate the RBM partition function and save approximate samples (by running AIS followed by a lot of Gibbs steps):
 

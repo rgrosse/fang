@@ -92,7 +92,7 @@ class PosTermInfo(Struct):
         
 
 
-def plot_objfn(pos_term_info, log_Z_info, color, zoom=False):
+def plot_objfn(pos_term_info, log_Z_info, color, zoom=False, label=None):
     assert np.all(pos_term_info.counts == log_Z_info.counts)
     exact = not hasattr(log_Z_info, 'lower')
     
@@ -101,7 +101,7 @@ def plot_objfn(pos_term_info, log_Z_info, color, zoom=False):
         lower = pos_term_info.values - log_Z_info.upper
         upper = pos_term_info.values - log_Z_info.lower
     
-    pylab.semilogx(pos_term_info.counts, mean, color=color)
+    pylab.semilogx(pos_term_info.counts, mean, color=color, label=label)
     if not exact:
         pylab.errorbar(pos_term_info.counts, (lower+upper)/2., yerr=(upper-lower)/2., fmt='', ls='None', ecolor=color)
     if zoom:
@@ -194,10 +194,9 @@ class LogProbTracker:
                     self.log_Z_info[name].update(self.count, log_Z)
 
                 else:
-                    seq = ais.GeometricRBMPath(init_rbm, curr_rbm)
-                    path = ais.RBMDistributionSequence(seq, self.num_particles, 'h')
+                    path = ais.GeometricRBMPath(init_rbm, curr_rbm)
                     schedule = np.linspace(0., 1., self.num_steps)
-                    _, log_Z, _ = ais.ais(path, schedule, show_progress=True)
+                    _, log_Z, _ = ais.ais(path, schedule, self.num_particles, show_progress=True)
                     self.log_Z_info[name].update(self.count, log_Z)
 
             self.plot()
@@ -208,34 +207,34 @@ class LogProbTracker:
         if self.vis is not None:
             pylab.figure('log probs')
             pylab.clf()
-            plot_objfn(self.fe_info['main'], self.log_Z_info['main'], 'b')
-            plot_objfn(self.fe_info['avg'], self.log_Z_info['avg'], 'r')
+            plot_objfn(self.fe_info['main'], self.log_Z_info['main'], 'b', label='Raw')
+            plot_objfn(self.fe_info['avg'], self.log_Z_info['avg'], 'r', label='Averaged')
             pylab.title('log probs')
-            pylab.legend(['raw', 'averaged'], loc='lower right')
+            pylab.legend(loc='lower right')
             pylab.gcf().canvas.draw()
 
             pylab.figure('log probs (zoomed)')
             pylab.clf()
-            plot_objfn(self.fe_info['main'], self.log_Z_info['main'], 'b', zoom=True)
-            plot_objfn(self.fe_info['avg'], self.log_Z_info['avg'], 'r')
+            plot_objfn(self.fe_info['main'], self.log_Z_info['main'], 'b', zoom=True, label='Raw')
+            plot_objfn(self.fe_info['avg'], self.log_Z_info['avg'], 'r', label='Averaged')
             pylab.title('log probs (zoomed)')
-            pylab.legend(['raw', 'averaged'], loc='lower right')
+            pylab.legend(loc='lower right')
             pylab.gcf().canvas.draw()
 
         if self.target_moments is not None:
             pylab.figure('moment matching objective')
             pylab.clf()
-            plot_objfn(self.dp_info['main'], self.log_Z_info['main'], 'b')
-            plot_objfn(self.dp_info['avg'], self.log_Z_info['avg'], 'r')
+            plot_objfn(self.dp_info['main'], self.log_Z_info['main'], 'b', label='Raw')
+            plot_objfn(self.dp_info['avg'], self.log_Z_info['avg'], 'r', label='Averaged')
             pylab.title('moment matching objective')
-            pylab.legend(['raw', 'averaged'], loc='lower right')
+            pylab.legend(loc='lower right')
             pylab.gcf().canvas.draw()
 
             pylab.figure('moment matching objective (zoomed)')
             pylab.clf()
-            plot_objfn(self.dp_info['main'], self.log_Z_info['main'], 'b', zoom=True)
-            plot_objfn(self.dp_info['avg'], self.log_Z_info['avg'], 'r')
+            plot_objfn(self.dp_info['main'], self.log_Z_info['main'], 'b', zoom=True, label='Raw')
+            plot_objfn(self.dp_info['avg'], self.log_Z_info['avg'], 'r', label='Averaged')
             pylab.title('moment matching objective (zoomed)')
-            pylab.legend(['raw', 'averaged'], loc='lower right')
+            pylab.legend(loc='lower right')
             pylab.gcf().canvas.draw()
         
